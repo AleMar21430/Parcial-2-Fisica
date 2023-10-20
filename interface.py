@@ -1,6 +1,11 @@
 from qt import *
 from math import *
 import numpy as np
+
+global charge_Q, charge_q
+charge_Q = 1.60217
+charge_q = 1.60217
+
 def electric_potential(x, y, x1, y1, x2, y2, Q):
 	k = 8.9875e9  # Coulomb's constant in N m²/C²
 
@@ -38,16 +43,10 @@ def electric_field_direction(x1, y1, x2, y2, x, y):
 class R_Image_Canvas_Scene(QGraphicsScene):
 	def __init__(self):
 		super().__init__()
-		
-		self.point1 = MovablePoint(0, 0, 0)
-		self.point2 = MovablePoint(0, 0, 0)
-		self.line_charge = Line_Charge(0,0,0,0)
-
-		self.addItem(self.line_charge)
-		self.addItem(self.point1)
-		self.addItem(self.point2)
-		
-		self.particle = Particle(1,0)
+		self.point_charge = Point_Charge()
+		self.line_charge = Line_Charge()
+		self.plane_charge = Plane_Charge()
+		self.particle = Particle()
 		self.addItem(self.particle)
 
 class R_Workspace_Image_Canvas(RW_Splitter):
@@ -64,7 +63,7 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 		self.addWidget(self.Viewport)
 		self.setSizes([500,1500])
 
-		self.Tools.updateParticle()
+		self.Tools.updateSimulationValues()
 		self.Viewport.update()
 
 class R_Toolbar(RW_Linear_Contents):
@@ -72,11 +71,9 @@ class R_Toolbar(RW_Linear_Contents):
 		super().__init__(True)
 		self.Parent = parent
 
-		global Q
-		Q = 1.60217
 		self.Particle_velocity = RCW_Float_Input_Slider("Velocidad m/s", 0, 299792458, 1).setValue(100000)
 		self.Particle_charge = RCW_Float_Input_Slider("Carga C x 10⁻¹⁹", 0, 100, 100000).setValue(1.60217)
-		self.Particle_x_value = RCW_Float_Input_Slider("X cm", 1, 1000, 10).setValue(1000)
+		self.Particle_x_value = RCW_Float_Input_Slider("X cm", 1, 1000, 10).setValue(500)
 		self.Particle_y_value = RCW_Float_Input_Slider("Y cm", -250, 250, 10)
 		self.Particle_theta_value = RCW_Float_Input_Slider("θ °", -50, 50, 10)
 
@@ -108,17 +105,50 @@ class R_Toolbar(RW_Linear_Contents):
 
 		self.Linear_Layout.addWidget(self.Restart_Simulation)
 
-		self.Particle_velocity.Input.valueChanged.connect(self.updateParticle)
-		self.Particle_charge.Input.valueChanged.connect(self.updateParticle)
-		self.Particle_x_value.Input.valueChanged.connect(self.updateParticle)
-		self.Particle_y_value.Input.valueChanged.connect(self.updateParticle)
-		self.Particle_theta_value.Input.valueChanged.connect(self.updateParticle)
+		self.Particle_velocity.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_charge.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_x_value.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_y_value.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_theta_value.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Charge_value.Input.valueChanged.connect(self.updateSimulationValues)
 
-	def updateParticle(self):
+
+		self.Use_Point.clicked.connect(self.usePointCharge)
+		self.Use_Line.clicked.connect(self.useLineCharge)
+		self.Use_Plane.clicked.connect(self.usePlaneCharge)
+
+	def updateSimulationValues(self):
+		global charge_Q, charge_q
 		self.Parent.Scene.particle.setPos(self.Particle_x_value.Input.value() / 10, -self.Particle_y_value.Input.value() / 10)
-		self.Parent.Scene.particle.setVector(self.Particle_velocity.Input.value() / 1000000, -self.Particle_theta_value.Input.value()/10 + 90)
-		Q = self.Particle_charge.Input.value() / 10000
+		self.Parent.Scene.particle.setVector(self.Particle_velocity.Input.value(), -self.Particle_theta_value.Input.value()/10 + 90)
+		charge_q = self.Particle_charge.Input.value() / 100000
+		self.Parent.Scene.particle.charge = charge_q
+		charge_Q = self.Charge_value.Input.value() / 100000
 		self.Parent.Viewport.update()
+
+	def usePointCharge(self):
+		self.Parent.Scene.clear()
+		self.Parent.Scene.point_charge = Point_Charge()
+		self.Parent.Scene.particle = Particle()
+		self.Parent.Scene.addItem(self.Parent.Scene.particle)
+		self.Parent.Scene.addItem(self.Parent.Scene.point_charge)
+		self.updateSimulationValues()
+		
+	def useLineCharge(self):
+		self.Parent.Scene.clear()
+		self.Parent.Scene.line_charge = Line_Charge()
+		self.Parent.Scene.particle = Particle()
+		self.Parent.Scene.addItem(self.Parent.Scene.particle)
+		self.Parent.Scene.addItem(self.Parent.Scene.line_charge)
+		self.updateSimulationValues()
+		
+	def usePlaneCharge(self):
+		self.Parent.Scene.clear()
+		self.Parent.Scene.plane_charge = Plane_Charge()
+		self.Parent.Scene.particle = Particle()
+		self.Parent.Scene.addItem(self.Parent.Scene.particle)
+		self.Parent.Scene.addItem(self.Parent.Scene.plane_charge)
+		self.updateSimulationValues()
 
 
 class R_Image_Canvas_Viewport(QGraphicsView):
@@ -216,32 +246,46 @@ class R_Image_Canvas_Viewport(QGraphicsView):
 		else: super().mouseMoveEvent(event)
 		self.scene().update()
 
-class MovablePoint(QGraphicsEllipseItem):
-	def __init__(self, x, y, yoffset):
-		super().__init__(x - 4, y - 4, 8, 8)
-		self.offset = yoffset
-		self.setBrush(Qt.GlobalColor.blue)
+class Point_Charge(QGraphicsEllipseItem):
+	def __init__(self):
+		super().__init__(-4, -4, 8, 8)
+		self.setPen(QPen(Qt.GlobalColor.red,3))
 
 	def paint(self, painter, option, widget):
 		painter.setPen(QPen(Qt.GlobalColor.white, 2))
 		painter.setBrush(QBrush(Qt.GlobalColor.white))
-
-		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 10, self.mapFromScene(self.pos()).y() + 10 + self.offset), f"{round(self.pos().x(),2)}x {round(self.pos().y(),2)}y")
-
+		painter.drawText(QPointF(self.mapFromScene(0,0).x(), self.mapFromScene(0,0).y()+250), f"Q = {charge_Q} C x 10⁻¹⁹")
 		super().paint(painter, option, widget)
 
-
 class Line_Charge(QGraphicsLineItem):
-	def __init__(self, x1, y1, x2, y2):
-		super().__init__(x1, y1, x2, y2)
+	def __init__(self):
+		super().__init__(0, -300, 0, 300)
 		self.setPen(QPen(Qt.GlobalColor.green,3))
 
+	def paint(self, painter, option, widget):
+		painter.setPen(QPen(Qt.GlobalColor.white, 2))
+		painter.setBrush(QBrush(Qt.GlobalColor.white))
+		painter.drawText(QPointF(self.mapFromScene(0,0).x(), self.mapFromScene(0,0).y()+250), f"Q = {charge_Q} C x 10⁻¹⁹")
+		super().paint(painter, option, widget)
+
+class Plane_Charge(QGraphicsLineItem):
+	def __init__(self):
+		super().__init__(0, -300, 0, 300)
+		self.setPen(QPen(Qt.GlobalColor.blue,3))
+
+	def paint(self, painter, option, widget):
+		painter.setPen(QPen(Qt.GlobalColor.white, 2))
+		painter.setBrush(QBrush(Qt.GlobalColor.white))
+		painter.drawText(QPointF(self.mapFromScene(0,0).x(), self.mapFromScene(0,0).y()+250), f"Q = {charge_Q} C x 10⁻¹⁹")
+		super().paint(painter, option, widget)
+
 class Particle(QGraphicsEllipseItem):
-	def __init__(self, x, y):
-		super().__init__(x - 4, y - 4, 8, 8)
+	def __init__(self):
+		super().__init__(-4, -4, 8, 8)
 		self.vector = QLineF(self.pos(), self.pos() + QPointF(50, 0))
 		self.angle_degrees = 0.0
 		self.length = 1.0
+		self.charge = 1.60217
 
 	def paint(self, painter, option, widget):
 		painter.setPen(QPen(Qt.GlobalColor.white, 2))
@@ -250,20 +294,25 @@ class Particle(QGraphicsEllipseItem):
 
 		x = '{:,}'.format(round(self.pos().x(),1)).replace(',','\'')
 		y = '{:,}'.format(-round(self.pos().y(),1)).replace(',','\'')
-		v = '{:,}'.format(self.length * 1000000).replace(',','\'')
+		theta = -round(self.angle_degrees -90,1)
+		c = '{:,}'.format(self.charge).replace(',','\'')
+		v = '{:,}'.format(self.length).replace(',','\'')
 
-		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 10, self.mapFromScene(self.pos()).y() + 10),
-			f"X = {x}m | Y = {y}m | θ = {-round(self.angle_degrees -90,1)}° | v = {v}m/s"
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() - 3, self.mapFromScene(self.pos()).y() + 20),
+			f"x = {x}m | y = {y}m | θ = {theta}°"
+		)
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() -3, self.mapFromScene(self.pos()).y() + 40),
+			f"q = {c} C x 10⁻¹⁹ | v = {v}m/s"
 		)
 
-		painter.setPen(QPen(Qt.GlobalColor.red, 2))
+		painter.setPen(QPen(Qt.GlobalColor.magenta, 2))
 		painter.drawLine(self.vector.p1(), self.vector.p2())
 		painter.drawEllipse(self.mapFromScene(self.pos()) , dot_radius * 2, dot_radius * 2)
 
 		super().paint(painter, option, widget)
 
 	def setVector(self, length, angle_degrees):
-		self.vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF(length, 0))
+		self.vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF(sqrt(sqrt(length)), 0))
 		self.vector.setAngle(angle_degrees + 90)
 		self.length = length
 		self.angle_degrees = angle_degrees
