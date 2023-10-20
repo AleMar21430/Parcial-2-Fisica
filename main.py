@@ -15,10 +15,10 @@ class Window (RW_Window):
 		App.setStyleSheet(self.Style)
 
 		self.setWindowTitle("Parcial 2")
-		self.showMaximized()
 
 Application = RW_Application(sys.argv)
 Log = RW_Text_Stream()
 Main_Window = Window(Application)
 Main_Window.setCentralWidget(R_Workspace_Image_Canvas(Log))
+Main_Window.showMaximized()
 Application.exec()

@@ -816,7 +816,7 @@ class RCW_Float_Input_Slider(RW_Linear_Contents):
 		self.Line = RW_Line_Editor().setValidator(QDoubleValidator(Min, Max, 5))
 		self.Popup_Line = RW_Menu().setLayout(RW_Linear_Layout(False).addWidget(self.Line))
 
-		self.addWidget(self.Label).addWidget(self.Input).setStretch({0:1,1:2})
+		self.addWidget(self.Label).addWidget(self.Input).setStretch({0:1,1:1})
 
 		self.Label.clicked.connect(self.textEdit)
 		self.Line.textChanged.connect(self.updateSlider)
@@ -868,8 +868,8 @@ class RCW_Float_Slider(RW_Slider):
 		painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 		painterPath = QPainterPath()
 		if self.Offset == 1:
-			painterPath.addText(QPointF(self.geometry().width() / 2 - QFontMetrics(self.font()).horizontalAdvance(str(self.value())) / 2, self.geometry().height() * 0.75), self.font() , str(self.value()))
+			painterPath.addText(QPointF(self.geometry().width() / 2 - QFontMetrics(self.font()).horizontalAdvance(str(self.value())) / 2, self.geometry().height() * 0.75), self.font() , "{:,}".format(self.value()).replace(',','\''))
 		else:
-			painterPath.addText(QPointF(self.geometry().width() / 2 - QFontMetrics(self.font()).horizontalAdvance(str(self.value())) / 2, self.geometry().height() * 0.75), self.font() , str(self.value() / self.Offset))
+			painterPath.addText(QPointF(self.geometry().width() / 2 - QFontMetrics(self.font()).horizontalAdvance(str(self.value())) / 2, self.geometry().height() * 0.75), self.font() , "{:,}".format(self.value() / self.Offset).replace(',','\''))
 		painter.strokePath(painterPath, QPen(QColor(0,0,0), 2.5))
 		painter.fillPath(painterPath, QColor(250,250,250))

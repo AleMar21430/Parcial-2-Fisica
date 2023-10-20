@@ -55,9 +55,6 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 		super().__init__(False)
 		self.Log = Log
 
-		global Q
-		Q, ok = QInputDialog.getDouble(self, "Carga Q", "Carga Q:", 0.000001, decimals=10)
-
 		self.Scene = R_Image_Canvas_Scene()
 		self.Viewport = R_Image_Canvas_Viewport()
 		self.Viewport.setScene(self.Scene)
@@ -75,23 +72,25 @@ class R_Toolbar(RW_Linear_Contents):
 		super().__init__(True)
 		self.Parent = parent
 
-		self.Particle_velocity = RCW_Float_Input_Slider("Velocidada de Particula (m/s)", 0, 299792458, 1).setValue(1000)
-		self.Particle_charge = RCW_Float_Input_Slider("Carga de Particula (C)", -10, 10, 10000).setValue(0.001)
-		self.Particle_x_value = RCW_Float_Input_Slider("Paritcula X (cm)", 1, 10000, 10).setValue(1000)
-		self.Particle_y_value = RCW_Float_Input_Slider("Paritcula Y (cm)", -100, 100, 10)
-		self.Particle_theta_value = RCW_Float_Input_Slider("Particula θ (deg)", -50, 50, 10)
+		global Q
+		Q = 1.60217
+		self.Particle_velocity = RCW_Float_Input_Slider("Velocidad m/s", 0, 299792458, 1).setValue(100000)
+		self.Particle_charge = RCW_Float_Input_Slider("Carga C x 10⁻¹⁹", 0, 100, 100000).setValue(1.60217)
+		self.Particle_x_value = RCW_Float_Input_Slider("X cm", 1, 1000, 10).setValue(1000)
+		self.Particle_y_value = RCW_Float_Input_Slider("Y cm", -250, 250, 10)
+		self.Particle_theta_value = RCW_Float_Input_Slider("θ °", -50, 50, 10)
 
 		self.Use_Point = RW_Button()
 		self.Use_Line = RW_Button()
 		self.Use_Plane = RW_Button()
 
-		self.Charge_value = RCW_Float_Input_Slider("Carga / Densidad de Carga", -10, 10)
+		self.Charge_value = RCW_Float_Input_Slider("Densidad / Carga", 0, 100, 100000).setValue(1.60217)
 
 		self.Restart_Simulation = RW_Button()
 
-		self.Use_Point.setText("Usar Carga Puntual")
-		self.Use_Line.setText("Usar Linea Infinita")
-		self.Use_Plane.setText("Usar Plano Infinito")
+		self.Use_Point.setText("Carga Puntual")
+		self.Use_Line.setText("Linea Infinita")
+		self.Use_Plane.setText("Plano Infinito")
 
 		self.Restart_Simulation.setText("Reiniciar Simulación")
 
@@ -112,11 +111,11 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Particle_velocity.Input.valueChanged.connect(self.updateParticle)
 		self.Particle_charge.Input.valueChanged.connect(self.updateParticle)
 		self.Particle_x_value.Input.valueChanged.connect(self.updateParticle)
-		self.Particle_x_value.Input.valueChanged.connect(self.updateParticle)
+		self.Particle_y_value.Input.valueChanged.connect(self.updateParticle)
 		self.Particle_theta_value.Input.valueChanged.connect(self.updateParticle)
 
 	def updateParticle(self):
-		self.Parent.Scene.particle.setPos(self.Particle_x_value.Input.value() / 10, self.Particle_y_value.Input.value() / 10)
+		self.Parent.Scene.particle.setPos(self.Particle_x_value.Input.value() / 10, -self.Particle_y_value.Input.value() / 10)
 		self.Parent.Scene.particle.setVector(self.Particle_velocity.Input.value() / 1000000, -self.Particle_theta_value.Input.value()/10 + 90)
 		Q = self.Particle_charge.Input.value() / 10000
 		self.Parent.Viewport.update()
@@ -133,9 +132,6 @@ class R_Image_Canvas_Viewport(QGraphicsView):
 	def __init__(self):
 		super().__init__()
 		self.Last_Pos_Pan = QPoint(0,0)
-		self.Last_Pos_Move = QPoint(0,0)
-		self.Moving_Item = False
-		self.Selecting_Item = False
 		self.Panning_View = False
 
 	def drawBackground(self, painter, rect):
@@ -202,60 +198,16 @@ class R_Image_Canvas_Viewport(QGraphicsView):
 		self.translate(delta.x(), delta.y())
 
 	def mousePressEvent(self, event: QMouseEvent):
-		if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.MiddleButton:
+		if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
 			self.Panning_View = True
 			self.Last_Pos_Pan = event.pos()
-		elif event.button() == Qt.MouseButton.LeftButton:
-			self.Moving_Item = True
-			self.item = self.itemAt(event.pos())
-			self.Last_Pos_Move = event.pos()
-		elif event.button() == Qt.MouseButton.RightButton:
-			self.Moving_Item = True
-			measure_item = Particle(0,0)
-			self.scene().addItem(measure_item)
-
-			self.item = measure_item
-			self.Last_Pos_Move = event.pos()
-
 
 	def mouseReleaseEvent(self, event: QMouseEvent):
-		if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.MiddleButton:
+		if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
 			self.Panning_View = False
-		elif event.button() == Qt.MouseButton.LeftButton:
-			self.Moving_Item = False
-		elif event.button() == Qt.MouseButton.RightButton:
-			self.Moving_Item = False
 
 	def mouseMoveEvent(self, event: QMoveEvent):
-		if self.Moving_Item and (type(self.item) == MovablePoint or type(self.item) == Particle):
-			delta = (event.pos() - self.Last_Pos_Move) / self.transform().m11()
-			self.item.setPos(self.item.pos().toPoint() + delta)
-			self.Last_Pos_Move = event.pos()
-			self.scene().line_charge.setLine(QLineF(self.scene().point1.pos().x(), self.scene().point1.pos().y(), self.scene().point2.pos().x(), self.scene().point2.pos().y()))
-
-			for item in self.scene().items():
-				if type(item) == Particle:
-					x, y = electric_field_direction(
-						self.scene().point1.pos().x(),
-						self.scene().point1.pos().y(),
-						self.scene().point2.pos().x(),
-						self.scene().point2.pos().y(),
-						item.pos().x(),
-						item.pos().y()
-					)
-					angle_degrees = degrees(atan2(x, y))
-					potential = electric_potential(
-						item.pos().x(),
-						item.pos().y(),
-						self.scene().point1.pos().x(),
-						self.scene().point1.pos().y(),
-						self.scene().point2.pos().x(),
-						self.scene().point2.pos().y(),
-						Q
-					)
-					item.setVector(potential, angle_degrees)
-
-		elif self.Panning_View:
+		if self.Panning_View:
 			delta = (event.pos() - self.Last_Pos_Pan)
 			self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
 			self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
@@ -296,7 +248,13 @@ class Particle(QGraphicsEllipseItem):
 		painter.setBrush(QBrush(Qt.GlobalColor.white))
 		dot_radius = 2
 
-		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 10, self.mapFromScene(self.pos()).y() + 10), f"{round(self.pos().x(),2)}x | {round(self.pos().y(),2)}y | {-round(self.angle_degrees -90,2)}deg. | {int(self.length * 1000000)}m/s")
+		x = '{:,}'.format(round(self.pos().x(),1)).replace(',','\'')
+		y = '{:,}'.format(-round(self.pos().y(),1)).replace(',','\'')
+		v = '{:,}'.format(self.length * 1000000).replace(',','\'')
+
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 10, self.mapFromScene(self.pos()).y() + 10),
+			f"X = {x}m | Y = {y}m | θ = {-round(self.angle_degrees -90,1)}° | v = {v}m/s"
+		)
 
 		painter.setPen(QPen(Qt.GlobalColor.red, 2))
 		painter.drawLine(self.vector.p1(), self.vector.p2())
