@@ -806,12 +806,13 @@ class RW_Toolbar(QMenuBar):
 		return self
 
 class RCW_Float_Input_Slider(RW_Linear_Contents):
-	def __init__(self, Label = "Value", Min = 0, Max = 10):
+	def __init__(self, Label = "Value", Min = 0, Max = 10, offset = 10):
 		super().__init__(False)
 		self.setFixedHeight(25)
+		self.Offset = offset
 
 		self.Label = RW_Button().setText(Label)
-		self.Input = RCW_Float_Slider().setRange(Min * 1000, Max * 1000)
+		self.Input = RCW_Float_Slider(Min, Max, self.Offset)
 		self.Line = RW_Line_Editor().setValidator(QDoubleValidator(Min, Max, 5))
 		self.Popup_Line = RW_Menu().setLayout(RW_Linear_Layout(False).addWidget(self.Line))
 
@@ -822,14 +823,14 @@ class RCW_Float_Input_Slider(RW_Linear_Contents):
 		self.Line.returnPressed.connect(self.updateText)
 
 	def setValue(self, Value = 0):
-		self.Input.setValue(float(Value * 1000))
+		self.Input.setValue(float(Value * self.Offset))
 		return self
 
 	def updateSlider(self):
-		self.Input.setValue(float(self.Line.text()) * 1000)
+		self.Input.setValue(float(self.Line.text()) * self.Offset)
 
 	def textEdit(self):
-		self.Line.setText(str(self.Input.value() / 1000))
+		self.Line.setText(str(self.Input.value() / self.Offset))
 		self.Line.setFixedSize(self.Input.width(), self.Input.height())
 		self.Line.selectAll().setFocus()
 		self.Popup_Line.setFixedSize(self.Input.width(), self.Input.height())
@@ -839,10 +840,10 @@ class RCW_Float_Input_Slider(RW_Linear_Contents):
 		self.Popup_Line.close()
 
 class RCW_Float_Slider(RW_Slider):
-	def __init__(self, Vertical: bool = False, Min = 0, Max = 100):
-		super().__init__(Vertical)
-
-		self.setRange(Min,Max)
+	def __init__(self, Min = 0, Max = 100, offset = 10):
+		super().__init__()
+		self.Offset = offset
+		self.setRange(Min * self.Offset, Max * self.Offset)
 
 	def mousePressEvent(self, event: QMouseEvent):
 		if event.button() == Qt.MouseButton.LeftButton and not self.isSliderDown():
@@ -866,6 +867,9 @@ class RCW_Float_Slider(RW_Slider):
 		painter = QPainter(self)
 		painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 		painterPath = QPainterPath()
-		painterPath.addText(QPointF(self.geometry().width() / 2 - QFontMetrics(self.font()).horizontalAdvance(str(self.value())) / 2, self.geometry().height() * 0.75), self.font() , str(self.value() / 1000))
+		if self.Offset == 1:
+			painterPath.addText(QPointF(self.geometry().width() / 2 - QFontMetrics(self.font()).horizontalAdvance(str(self.value())) / 2, self.geometry().height() * 0.75), self.font() , str(self.value()))
+		else:
+			painterPath.addText(QPointF(self.geometry().width() / 2 - QFontMetrics(self.font()).horizontalAdvance(str(self.value())) / 2, self.geometry().height() * 0.75), self.font() , str(self.value() / self.Offset))
 		painter.strokePath(painterPath, QPen(QColor(0,0,0), 2.5))
 		painter.fillPath(painterPath, QColor(250,250,250))

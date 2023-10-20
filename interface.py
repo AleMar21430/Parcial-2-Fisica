@@ -47,10 +47,10 @@ class R_Image_Canvas_Scene(QGraphicsScene):
 		self.addItem(self.point1)
 		self.addItem(self.point2)
 		
-		measure_item = Measure(0,0)
-		self.addItem(measure_item)
+		self.particle = Particle(1,0)
+		self.addItem(self.particle)
 
-class R_Workspace_Image_Canvas (RW_Splitter):
+class R_Workspace_Image_Canvas(RW_Splitter):
 	def __init__(self, Log: RW_Text_Stream):
 		super().__init__(False)
 		self.Log = Log
@@ -67,35 +67,60 @@ class R_Workspace_Image_Canvas (RW_Splitter):
 		self.addWidget(self.Viewport)
 		self.setSizes([500,1500])
 
+		self.Tools.updateParticle()
+		self.Viewport.update()
+
 class R_Toolbar(RW_Linear_Contents):
-	def __init__(self, parent):
+	def __init__(self, parent: R_Workspace_Image_Canvas):
 		super().__init__(True)
 		self.Parent = parent
+
+		self.Particle_velocity = RCW_Float_Input_Slider("Velocidada de Particula (m/s)", 0, 299792458, 1).setValue(1000)
+		self.Particle_charge = RCW_Float_Input_Slider("Carga de Particula (C)", -10, 10, 10000).setValue(0.001)
+		self.Particle_x_value = RCW_Float_Input_Slider("Paritcula X (cm)", 1, 10000, 10).setValue(1000)
+		self.Particle_y_value = RCW_Float_Input_Slider("Paritcula Y (cm)", -100, 100, 10)
+		self.Particle_theta_value = RCW_Float_Input_Slider("Particula θ (deg)", -50, 50, 10)
 
 		self.Use_Point = RW_Button()
 		self.Use_Line = RW_Button()
 		self.Use_Plane = RW_Button()
 
-		self.Particle_x_value = RCW_Float_Input_Slider("Velocidad", 0, 100)
+		self.Charge_value = RCW_Float_Input_Slider("Carga / Densidad de Carga", -10, 10)
 
-		self.Update_Values = RW_Button()
 		self.Restart_Simulation = RW_Button()
 
 		self.Use_Point.setText("Usar Carga Puntual")
 		self.Use_Line.setText("Usar Linea Infinita")
 		self.Use_Plane.setText("Usar Plano Infinito")
 
-		self.Update_Values.setText("Actualizar Valores")
 		self.Restart_Simulation.setText("Reiniciar Simulación")
+
+		self.Linear_Layout.addWidget(self.Particle_velocity)
+		self.Linear_Layout.addWidget(self.Particle_charge)
+		self.Linear_Layout.addWidget(self.Particle_x_value)
+		self.Linear_Layout.addWidget(self.Particle_y_value)
+		self.Linear_Layout.addWidget(self.Particle_theta_value)
 
 		self.Linear_Layout.addWidget(self.Use_Point)
 		self.Linear_Layout.addWidget(self.Use_Line)
 		self.Linear_Layout.addWidget(self.Use_Plane)
 
-		self.Linear_Layout.addWidget(self.Particle_x_value)
+		self.Linear_Layout.addWidget(self.Charge_value)
 
-		self.Linear_Layout.addWidget(self.Update_Values)
 		self.Linear_Layout.addWidget(self.Restart_Simulation)
+
+		self.Particle_velocity.Input.valueChanged.connect(self.updateParticle)
+		self.Particle_charge.Input.valueChanged.connect(self.updateParticle)
+		self.Particle_x_value.Input.valueChanged.connect(self.updateParticle)
+		self.Particle_x_value.Input.valueChanged.connect(self.updateParticle)
+		self.Particle_theta_value.Input.valueChanged.connect(self.updateParticle)
+
+	def updateParticle(self):
+		self.Parent.Scene.particle.setPos(self.Particle_x_value.Input.value() / 10, self.Particle_y_value.Input.value() / 10)
+		self.Parent.Scene.particle.setVector(self.Particle_velocity.Input.value() / 1000000, -self.Particle_theta_value.Input.value()/10 + 90)
+		Q = self.Particle_charge.Input.value() / 10000
+		self.Parent.Viewport.update()
+
 
 class R_Image_Canvas_Viewport(QGraphicsView):
 	BG_Color = QColor(25,25,25)
@@ -186,7 +211,7 @@ class R_Image_Canvas_Viewport(QGraphicsView):
 			self.Last_Pos_Move = event.pos()
 		elif event.button() == Qt.MouseButton.RightButton:
 			self.Moving_Item = True
-			measure_item = Measure(0,0)
+			measure_item = Particle(0,0)
 			self.scene().addItem(measure_item)
 
 			self.item = measure_item
@@ -202,14 +227,14 @@ class R_Image_Canvas_Viewport(QGraphicsView):
 			self.Moving_Item = False
 
 	def mouseMoveEvent(self, event: QMoveEvent):
-		if self.Moving_Item and (type(self.item) == MovablePoint or type(self.item) == Measure):
+		if self.Moving_Item and (type(self.item) == MovablePoint or type(self.item) == Particle):
 			delta = (event.pos() - self.Last_Pos_Move) / self.transform().m11()
 			self.item.setPos(self.item.pos().toPoint() + delta)
 			self.Last_Pos_Move = event.pos()
 			self.scene().line_charge.setLine(QLineF(self.scene().point1.pos().x(), self.scene().point1.pos().y(), self.scene().point2.pos().x(), self.scene().point2.pos().y()))
 
 			for item in self.scene().items():
-				if type(item) == Measure:
+				if type(item) == Particle:
 					x, y = electric_field_direction(
 						self.scene().point1.pos().x(),
 						self.scene().point1.pos().y(),
@@ -259,7 +284,7 @@ class Line_Charge(QGraphicsLineItem):
 		super().__init__(x1, y1, x2, y2)
 		self.setPen(QPen(Qt.GlobalColor.green,3))
 
-class Measure(QGraphicsEllipseItem):
+class Particle(QGraphicsEllipseItem):
 	def __init__(self, x, y):
 		super().__init__(x - 4, y - 4, 8, 8)
 		self.vector = QLineF(self.pos(), self.pos() + QPointF(50, 0))
@@ -271,7 +296,7 @@ class Measure(QGraphicsEllipseItem):
 		painter.setBrush(QBrush(Qt.GlobalColor.white))
 		dot_radius = 2
 
-		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 10, self.mapFromScene(self.pos()).y() + 10), f"{round(self.pos().x(),2)}x {round(self.pos().y(),2)}y   {round(self.angle_degrees,2)}deg. {round(self.length,5)}V")
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 10, self.mapFromScene(self.pos()).y() + 10), f"{round(self.pos().x(),2)}x | {round(self.pos().y(),2)}y | {-round(self.angle_degrees -90,2)}deg. | {int(self.length * 1000000)}m/s")
 
 		painter.setPen(QPen(Qt.GlobalColor.red, 2))
 		painter.drawLine(self.vector.p1(), self.vector.p2())
