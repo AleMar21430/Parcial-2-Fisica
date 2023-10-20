@@ -1,0 +1,253 @@
+App Font
+* {
+	font-family: 		Helvetica;
+	font-size: 			14px;
+	font-weight: 		Normal;
+}
+
++Button
+QPushButton, QPushButton#Default_Button {
+	color: 				rgb(0,0,0);
+	background: 			rgb(250,140,25);
+
+	border-style: 		solid;
+	border-width: 		2px;
+	border-radius: 		5px;
+	border-color: 		rgb(0,0,0);
+}
+
+QPushButton::hover, QPushButton::hover#Default_Button  {
+	background: 			rgb(240,100,15);
+}
+
+QPushButton::pressed#Default_Button {
+
+	background: 			rgb(250,80,50);
+}
+
++Dock
+QDockWidget, #Default_Dock {
+
+}
+
+QDockWidget::title {
+
+	background: 			rgb(250,140,25);
+
+	border-style: 		solid;
+	border-width: 		2px;
+	border-radius: 		5px;
+	border-color: 		rgb(0,0,0);
+
+	padding-top: 		1px;
+	padding-left: 		5px;
+}
+
++File Browser
+QFileDialog, #Default_FileBrowser{
+
+}
+
++Label
+QLabel, #Default_Label {
+
+	background: 			rgb(75,75,75);
+}
+
++Log
+QTextBrowser, #Default_TextStream {
+
+	background: 			rgb(0,0,0);
+	color: 				rgb(0,250,250);
+
+	border-style: 		solid;
+	border-width: 		0px;
+	border-radius: 		5px;
+	border-color: 		transparent;
+}
+
++Menu
+QMenu, #Default_Menu {
+
+	background: 			rgb(20,20,20);
+	color: 				rgb(250,250,250);
+
+	border-style: 		solid;
+	border-width: 		2px;
+	border-radius: 		5px;
+	border-color: 		rgb(250,140,25);
+}
+
+QMenu::item:selected{
+
+	background: 			rgb(250,140,25);
+	color: 				rgb(0,0,0);
+}
+
++Scroll Area
+QScrollArea, #Default_ScrollArea {
+	background: 			rgb(75,75,75);
+}
+
++Scrollbar
+QScrollBar {
+
+	background: 			rgb(0,0,0);
+
+	width: 				12px;
+
+	border-style: 		solid;
+	border-width: 		1px;
+	border-radius:		0px;
+	border-color: 		rgb(0,0,0);
+
+	margin: 				15px,15px,0,0;
+}
+
+QScrollBar::handle:vertical {
+
+	background: 			rgb(250,140,25);
+
+	border-style: 		solid;
+	border-width: 		1px;
+	border-radius: 		0px;
+	border-color: 		rgb(0,0,0) transparent rgb(0,0,0) transparent;
+}
+
+QScrollBar::add-line:vertical {
+
+	background: 			rgb(250,100,20);
+
+	height: 				13px;
+
+	border-style: 		solid;
+	border-width: 		1px;
+	border-radius: 		0px;
+	border-color: 		rgb(0,0,0);
+
+	subcontrol-position: bottom;
+	subcontrol-origin: 	margin;
+}
+
+QScrollBar::sub-line:vertical {
+
+	background: 			rgb(250,100,20);
+
+	height: 				13px;
+
+	border-style: 		solid;
+	border-width: 		1px;
+	border-radius: 		0px;
+	border-color: 		rgb(0,0,0);
+
+	subcontrol-position:	top;
+	subcontrol-origin: 	margin;
+}
+
++Slider
+QSlider, #Default_Slider {
+	
+}
+
+QSlider::add-page:horizontal {
+
+	background: 			rgb(75,75,75);
+} 
+
+QSlider::sub-page:horizontal {
+
+	background: 			rgb(75,75,75);
+}
+
+QSlider::handle:horizontal {
+
+	background: 			rgb(150,150,150);
+	border-style: 		solid;
+	border-width: 		2px;
+	border-color: 		rgb(0,0,0);
+}
+
++Splitter
+QSplitter, #Default_Splitter {
+
+	background: 			rgb(20,20,20);
+}
+
+QSplitter::handle {
+
+	background: 			rgb(0,0,0);
+}
+
++Text Input
+QTextEdit, #Default_TextEdit {
+
+	background: 			rgb(10,10,10);
+	color: 				rgb(250,250,250);
+
+	border-style: 		solid;
+	border-width: 		px;
+	border-radius: 		5px;
+	border-color: 		transparent;
+
+	font-family: 		Courier New;
+	font-size: 			16px;
+}
+
++Toolbar
+QMenuBar, #Default_Toolbar {
+
+	color: 				rgb(0,0,0);
+	background: 			rgb(250,140,25);
+
+	border-style: 		solid;
+	border-width: 		2px;
+	border-radius: 		5px;
+	border-color: 		rgb(0,0,0);
+}
+
++Value Input
+QLineEdit, #Default_LineEdit {
+
+	color: 				rgb(0,0,0);
+	background: 			rgb(250,140,25);
+
+	border-style: 		solid;
+	border-width: 		0px;
+}
+
++Widget
+QWidget, #Default_Widget {
+
+	background: 			rgb(50,50,50);
+}
+
++Window
+QMainWindow, #Default_Window {
+
+	background: 			rgb(75,75,75);
+}
+
+QMainWindow::separator:vertical {
+
+	background: 			rgb(0,0,0);
+
+	width: 				4px;
+
+	border-style: 		solid;
+	border-width: 		2px;
+	border-radius: 		0px;
+	border-color: 		transparent rgb(250,140,25) transparent rgb(250,140,25);
+}
+
+QMainWindow::separator:horizontal {
+
+	background: 			rgb(0,0,0);
+
+	width: 				4px;
+
+	border-style: 		solid;
+	border-width: 		2px;
+	border-radius: 		0px;
+	border-color: 		rgb(250,140,25) transparent rgb(250,140,25) transparent;
+}
+

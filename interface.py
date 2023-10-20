@@ -50,9 +50,9 @@ class R_Image_Canvas_Scene(QGraphicsScene):
 		measure_item = Measure(0,0)
 		self.addItem(measure_item)
 
-class R_Workspace_Image_Canvas (RUI_Linear_Contents):
-	def __init__(self, Log: RUI_Text_Stream):
-		super().__init__("_Container",True)
+class R_Workspace_Image_Canvas (RW_Splitter):
+	def __init__(self, Log: RW_Text_Stream):
+		super().__init__(False)
 		self.Log = Log
 
 		global Q
@@ -61,10 +61,43 @@ class R_Workspace_Image_Canvas (RUI_Linear_Contents):
 		self.Scene = R_Image_Canvas_Scene()
 		self.Viewport = R_Image_Canvas_Viewport()
 		self.Viewport.setScene(self.Scene)
+		self.Tools = R_Toolbar(self)
 
-		self.Layout.addWidget(self.Viewport)
+		self.addWidget(self.Tools)
+		self.addWidget(self.Viewport)
+		self.setSizes([500,1500])
 
-class R_Image_Canvas_Viewport(RUI_Graphics_Viewport):
+class R_Toolbar(RW_Linear_Contents):
+	def __init__(self, parent):
+		super().__init__(True)
+		self.Parent = parent
+
+		self.Use_Point = RW_Button()
+		self.Use_Line = RW_Button()
+		self.Use_Plane = RW_Button()
+
+		self.Particle_x_value = RCW_Float_Input_Slider("Velocidad", 0, 100)
+
+		self.Update_Values = RW_Button()
+		self.Restart_Simulation = RW_Button()
+
+		self.Use_Point.setText("Usar Carga Puntual")
+		self.Use_Line.setText("Usar Linea Infinita")
+		self.Use_Plane.setText("Usar Plano Infinito")
+
+		self.Update_Values.setText("Actualizar Valores")
+		self.Restart_Simulation.setText("Reiniciar Simulación")
+
+		self.Linear_Layout.addWidget(self.Use_Point)
+		self.Linear_Layout.addWidget(self.Use_Line)
+		self.Linear_Layout.addWidget(self.Use_Plane)
+
+		self.Linear_Layout.addWidget(self.Particle_x_value)
+
+		self.Linear_Layout.addWidget(self.Update_Values)
+		self.Linear_Layout.addWidget(self.Restart_Simulation)
+
+class R_Image_Canvas_Viewport(QGraphicsView):
 	BG_Color = QColor(25,25,25)
 	Grid_Small = QPen(QColor(50, 50, 50), 0.5)
 	Gird_Large = QPen(QColor(75, 75, 75), 0.75)
