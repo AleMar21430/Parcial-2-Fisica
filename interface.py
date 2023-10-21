@@ -2,15 +2,19 @@ from qt import *
 from math import *
 import numpy as np
 
-global charge_Q, charge_q, mass, velocity, vector_x, vector_y, pos_x, pos_y
+k = 8.9875e9
+
+global charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y, time_delta, simulation_step
 charge_Q = 1.60217
 charge_q = 1.60217
 mass = 9.10938
 velocity = 100000
-vector_x = -1
-vector_y = 0
+angle = 0
+velocity_x = 100000
+velocity_y = 0
 pos_x = 500
 pos_y = 0
+simulation_step = 0
 
 def electric_potential(x, y, x1, y1, x2, y2, Q):
 	k = 8.9875e9  # Coulomb's constant in N m²/C²
@@ -72,6 +76,23 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 
 		self.Tools.updateSimulationValues()
 		self.Viewport.update()
+	
+	def simulate():
+		global time_delta, velocity_x, velocity_y, pos_x, pos_y, simulation_step
+		r = sqrt(pos_x ** 2 + pos_y ** 2)
+		F_electric = (k * charge_q * charge_Q) / r**2
+		Fx = F_electric * (pos_x / r)
+		Fy = F_electric * (pos_y / r)
+		ax = Fx / mass
+		ay = Fy / mass
+
+		velocity_x += ax * time_delta
+		velocity_y += ay * time_delta
+
+		pos_x += velocity_x * time_delta
+		pos_y += velocity_y * time_delta
+
+		simulation_step += 1
 
 class R_Toolbar(RW_Linear_Contents):
 	def __init__(self, parent: R_Workspace_Image_Canvas):
@@ -80,10 +101,10 @@ class R_Toolbar(RW_Linear_Contents):
 
 		self.Particle_mass = RCW_Float_Input_Slider("Masa x 10⁻³⁷kg", 0, 1000, 100000).setValue(mass)
 		self.Particle_charge = RCW_Float_Input_Slider("Carga x 10⁻¹⁹C", 0, 100, 100000).setValue(charge_q)
-		self.Particle_velocity = RCW_Float_Input_Slider("Velocidad m/s", 0, 299792458, 1).setValue(velocity)
+		self.Particle_velocity = RCW_Float_Input_Slider("Velocidad m/s", 1, 299792458, 1).setValue(velocity)
 		self.Particle_x_pos = RCW_Float_Input_Slider("X cm", 25, 1000, 10).setValue(pos_x)
 		self.Particle_y_pos = RCW_Float_Input_Slider("Y cm", -300, 300, 10).setValue(pos_y)
-		self.Particle_theta = RCW_Float_Input_Slider("θ °", -45, 45, 10)
+		self.Particle_theta = RCW_Float_Input_Slider("θ °", -45, 45, 10).setValue(angle)
 
 		self.Use_Point = RW_Button()
 		self.Use_Line = RW_Button()
@@ -130,22 +151,21 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Use_Plane.clicked.connect(self.usePlaneCharge)
 
 	def updateSimulationValues(self):
-		global charge_Q, charge_q, mass, velocity, vector_x, vector_y, pos_x, pos_y
+		global charge_Q, charge_q, mass, velocity_x, velocity_y, pos_x, pos_y, time_delta, velocity, angle
 
-		angle_theta = -self.Particle_theta.Input.value()/10 + 90
-		angle_radians = radians(angle_theta)
-		
+		angle = -self.Particle_theta.Input.value()/10
+		angle_rad = radians(angle)
+
 		charge_Q = self.Static_charge.Input.value() / 100000
 		charge_q = self.Particle_charge.Input.value() / 100000
 		mass = self.Particle_mass.Input.value() / 100000
 		velocity = self.Particle_velocity.Input.value()
-		vector_x = cos(angle_radians)
-		vector_y = sin(angle_radians)
+		velocity_x = cos(angle_rad) * velocity
+		velocity_y = sin(angle_rad) * velocity
+		time_delta = 10000/velocity
 		pos_x = self.Particle_x_pos.Input.value() / 10
 		pos_y = self.Particle_y_pos.Input.value() / 10
-
 		self.Parent.Scene.particle.setPos(pos_x, -pos_y)
-		self.Parent.Scene.particle.setVector(velocity, angle_theta)
 		self.Parent.Viewport.update()
 
 	def usePointCharge(self):
@@ -304,8 +324,6 @@ class Plane_Charge(QGraphicsLineItem):
 class Particle(QGraphicsEllipseItem):
 	def __init__(self):
 		super().__init__(-4, -4, 8, 8)
-		self.vector = QLineF(self.pos(), self.pos() + QPointF(50, 0))
-		self.angle_degrees = 0.0
 
 	def paint(self, painter, option, widget):
 		painter.setPen(QPen(Qt.GlobalColor.white, 2))
@@ -315,9 +333,9 @@ class Particle(QGraphicsEllipseItem):
 		c = '{:,}'.format(charge_q).replace(',','\'')
 		x = '{:,}'.format(round(self.pos().x(),1)).replace(',','\'')
 		y = '{:,}'.format(-round(self.pos().y(),1)).replace(',','\'')
-		theta = -round(self.angle_degrees -90,1)
 		m = '{:,}'.format(mass).replace(',','\'')
 		v = '{:,}'.format(velocity).replace(',','\'')
+		theta = round(-angle, 1)
 
 		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 15, self.mapFromScene(self.pos()).y() + -40),
 			f"{x}m | {y}m"
@@ -335,14 +353,10 @@ class Particle(QGraphicsEllipseItem):
 			f"v = {v} m/s"
 		)
 
+		vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF(sqrt(sqrt(velocity)), 0))
+		vector.setAngle(angle + 180)
+
 		painter.setPen(QPen(Qt.GlobalColor.magenta, 2))
-		painter.drawLine(self.vector.p1(), self.vector.p2())
+		painter.drawLine(vector.p1(), vector.p2())
 		painter.drawEllipse(self.mapFromScene(self.pos()) , dot_radius * 2, dot_radius * 2)
-
 		super().paint(painter, option, widget)
-
-	def setVector(self, length, angle_degrees):
-		self.vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF(sqrt(sqrt(velocity)), 0))
-		self.vector.setAngle(angle_degrees + 90)
-		self.angle_degrees = angle_degrees
-		self.update()
