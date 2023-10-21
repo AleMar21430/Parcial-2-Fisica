@@ -2,9 +2,10 @@ from qt import *
 from math import *
 import numpy as np
 
-global charge_Q, charge_q, velocity, vector_x, vector_y, pos_x, pos_y
+global charge_Q, charge_q, mass, velocity, vector_x, vector_y, pos_x, pos_y
 charge_Q = 1.60217
 charge_q = 1.60217
+mass = 9.10938
 velocity = 100000
 vector_x = -1
 vector_y = 0
@@ -52,6 +53,7 @@ class R_Image_Canvas_Scene(QGraphicsScene):
 		self.line_charge = Line_Charge()
 		self.plane_charge = Plane_Charge()
 		self.particle = Particle()
+		self.addItem(self.point_charge)
 		self.addItem(self.particle)
 
 class R_Workspace_Image_Canvas(RW_Splitter):
@@ -76,64 +78,71 @@ class R_Toolbar(RW_Linear_Contents):
 		super().__init__(True)
 		self.Parent = parent
 
+		self.Particle_mass = RCW_Float_Input_Slider("Masa x 10⁻³⁷kg", 0, 1000, 100000).setValue(mass)
+		self.Particle_charge = RCW_Float_Input_Slider("Carga x 10⁻¹⁹C", 0, 100, 100000).setValue(charge_q)
 		self.Particle_velocity = RCW_Float_Input_Slider("Velocidad m/s", 0, 299792458, 1).setValue(velocity)
-		self.Particle_charge = RCW_Float_Input_Slider("Carga C x 10⁻¹⁹", 0, 100, 100000).setValue(charge_q)
-		self.Particle_x_value = RCW_Float_Input_Slider("X cm", 1, 1000, 10).setValue(pos_x)
-		self.Particle_y_value = RCW_Float_Input_Slider("Y cm", -250, 250, 10).setValue(pos_y)
-		self.Particle_theta_value = RCW_Float_Input_Slider("θ °", -50, 50, 10)
+		self.Particle_x_pos = RCW_Float_Input_Slider("X cm", 25, 1000, 10).setValue(pos_x)
+		self.Particle_y_pos = RCW_Float_Input_Slider("Y cm", -300, 300, 10).setValue(pos_y)
+		self.Particle_theta = RCW_Float_Input_Slider("θ °", -45, 45, 10)
 
 		self.Use_Point = RW_Button()
 		self.Use_Line = RW_Button()
 		self.Use_Plane = RW_Button()
 
-		self.Charge_value = RCW_Float_Input_Slider("Densidad / Carga", 0, 100, 100000).setValue(charge_Q)
+		self.Static_charge = RCW_Float_Input_Slider("Densidad / Carga", 0, 100, 100000).setValue(charge_Q)
 
+		self.Start_Simulation = RW_Button()
 		self.Restart_Simulation = RW_Button()
 
 		self.Use_Point.setText("Carga Puntual")
 		self.Use_Line.setText("Linea Infinita")
 		self.Use_Plane.setText("Plano Infinito")
 
+		self.Start_Simulation.setText("Iniciar Simulación")
 		self.Restart_Simulation.setText("Reiniciar Simulación")
 
-		self.Linear_Layout.addWidget(self.Particle_velocity)
 		self.Linear_Layout.addWidget(self.Particle_charge)
-		self.Linear_Layout.addWidget(self.Particle_x_value)
-		self.Linear_Layout.addWidget(self.Particle_y_value)
-		self.Linear_Layout.addWidget(self.Particle_theta_value)
+		self.Linear_Layout.addWidget(self.Particle_mass)
+		self.Linear_Layout.addWidget(self.Particle_velocity)
+		self.Linear_Layout.addWidget(self.Particle_x_pos)
+		self.Linear_Layout.addWidget(self.Particle_y_pos)
+		self.Linear_Layout.addWidget(self.Particle_theta)
 
 		self.Linear_Layout.addWidget(self.Use_Point)
 		self.Linear_Layout.addWidget(self.Use_Line)
 		self.Linear_Layout.addWidget(self.Use_Plane)
 
-		self.Linear_Layout.addWidget(self.Charge_value)
+		self.Linear_Layout.addWidget(self.Static_charge)
 
+		self.Linear_Layout.addWidget(self.Start_Simulation)
 		self.Linear_Layout.addWidget(self.Restart_Simulation)
 
-		self.Particle_velocity.Input.valueChanged.connect(self.updateSimulationValues)
 		self.Particle_charge.Input.valueChanged.connect(self.updateSimulationValues)
-		self.Particle_x_value.Input.valueChanged.connect(self.updateSimulationValues)
-		self.Particle_y_value.Input.valueChanged.connect(self.updateSimulationValues)
-		self.Particle_theta_value.Input.valueChanged.connect(self.updateSimulationValues)
-		self.Charge_value.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_mass.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_velocity.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_x_pos.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_y_pos.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Particle_theta.Input.valueChanged.connect(self.updateSimulationValues)
+		self.Static_charge.Input.valueChanged.connect(self.updateSimulationValues)
 
 		self.Use_Point.clicked.connect(self.usePointCharge)
 		self.Use_Line.clicked.connect(self.useLineCharge)
 		self.Use_Plane.clicked.connect(self.usePlaneCharge)
 
 	def updateSimulationValues(self):
-		global charge_Q, charge_q, velocity, vector_x, vector_y, pos_x, pos_y
+		global charge_Q, charge_q, mass, velocity, vector_x, vector_y, pos_x, pos_y
 
-		angle_theta = -self.Particle_theta_value.Input.value()/10 + 90
+		angle_theta = -self.Particle_theta.Input.value()/10 + 90
 		angle_radians = radians(angle_theta)
 		
-		charge_Q = self.Charge_value.Input.value() / 100000
+		charge_Q = self.Static_charge.Input.value() / 100000
 		charge_q = self.Particle_charge.Input.value() / 100000
+		mass = self.Particle_mass.Input.value() / 100000
 		velocity = self.Particle_velocity.Input.value()
 		vector_x = cos(angle_radians)
 		vector_y = sin(angle_radians)
-		pos_x = self.Particle_x_value.Input.value() / 10
-		pos_y = self.Particle_y_value.Input.value() / 10
+		pos_x = self.Particle_x_pos.Input.value() / 10
+		pos_y = self.Particle_y_pos.Input.value() / 10
 
 		self.Parent.Scene.particle.setPos(pos_x, -pos_y)
 		self.Parent.Scene.particle.setVector(velocity, angle_theta)
@@ -267,7 +276,7 @@ class Point_Charge(QGraphicsEllipseItem):
 	def paint(self, painter, option, widget):
 		painter.setPen(QPen(Qt.GlobalColor.white, 2))
 		painter.setBrush(QBrush(Qt.GlobalColor.white))
-		painter.drawText(QPointF(self.mapFromScene(0,0).x(), self.mapFromScene(0,0).y()+250), f"Q = {charge_Q} C x 10⁻¹⁹")
+		painter.drawText(QPointF(self.mapFromScene(0,0).x()-150, self.mapFromScene(0,0).y()), f"Q = {charge_Q} x 10⁻¹⁹C")
 		super().paint(painter, option, widget)
 
 class Line_Charge(QGraphicsLineItem):
@@ -278,7 +287,7 @@ class Line_Charge(QGraphicsLineItem):
 	def paint(self, painter, option, widget):
 		painter.setPen(QPen(Qt.GlobalColor.white, 2))
 		painter.setBrush(QBrush(Qt.GlobalColor.white))
-		painter.drawText(QPointF(self.mapFromScene(0,0).x(), self.mapFromScene(0,0).y()+250), f"Q = {charge_Q} C x 10⁻¹⁹")
+		painter.drawText(QPointF(self.mapFromScene(0,0).x()-150, self.mapFromScene(0,0).y()), f"Q = {charge_Q} x 10⁻¹⁹C")
 		super().paint(painter, option, widget)
 
 class Plane_Charge(QGraphicsLineItem):
@@ -289,7 +298,7 @@ class Plane_Charge(QGraphicsLineItem):
 	def paint(self, painter, option, widget):
 		painter.setPen(QPen(Qt.GlobalColor.white, 2))
 		painter.setBrush(QBrush(Qt.GlobalColor.white))
-		painter.drawText(QPointF(self.mapFromScene(0,0).x(), self.mapFromScene(0,0).y()+250), f"Q = {charge_Q} C x 10⁻¹⁹")
+		painter.drawText(QPointF(self.mapFromScene(0,0).x()-150, self.mapFromScene(0,0).y()), f"Q = {charge_Q} x 10⁻¹⁹C")
 		super().paint(painter, option, widget)
 
 class Particle(QGraphicsEllipseItem):
@@ -303,17 +312,27 @@ class Particle(QGraphicsEllipseItem):
 		painter.setBrush(QBrush(Qt.GlobalColor.white))
 		dot_radius = 2
 
+		c = '{:,}'.format(charge_q).replace(',','\'')
 		x = '{:,}'.format(round(self.pos().x(),1)).replace(',','\'')
 		y = '{:,}'.format(-round(self.pos().y(),1)).replace(',','\'')
 		theta = -round(self.angle_degrees -90,1)
-		c = '{:,}'.format(charge_q).replace(',','\'')
+		m = '{:,}'.format(mass).replace(',','\'')
 		v = '{:,}'.format(velocity).replace(',','\'')
 
-		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() - 3, self.mapFromScene(self.pos()).y() + 20),
-			f"x = {x}m | y = {y}m | θ = {theta}°"
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 15, self.mapFromScene(self.pos()).y() + -40),
+			f"{x}m | {y}m"
 		)
-		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() -3, self.mapFromScene(self.pos()).y() + 40),
-			f"q = {c} C x 10⁻¹⁹ | v = {v}m/s"
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 15, self.mapFromScene(self.pos()).y() + -20),
+			f"θ = {theta}°"
+		)
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 15, self.mapFromScene(self.pos()).y()),
+			f"m = {m} x 10⁻³⁷kg"
+		)
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 15, self.mapFromScene(self.pos()).y() + 20),
+			f"q = {c} x 10⁻¹⁹C"
+		)
+		painter.drawText(QPointF(self.mapFromScene(self.pos()).x() + 15, self.mapFromScene(self.pos()).y() + 40),
+			f"v = {v} m/s"
 		)
 
 		painter.setPen(QPen(Qt.GlobalColor.magenta, 2))
