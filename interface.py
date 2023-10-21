@@ -91,36 +91,46 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 
 		self.Tools.updateSimulationValues()
 		self.Viewport.update()
+		self.Restarting = True
 
 		self.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y]
 
 	def simulate(self):
+		self.Restarting = False
 		self.simulation_thread = Simulation_Thread(charge_Q, charge_q, mass, pos_x, pos_y, velocity_x, velocity_y, velocity)
 		self.simulation_thread.gui_update.connect(self.thread_update)
 		self.simulation_thread.start()
 
 	def thread_update(self, px, py, vx, vy, v):
-		global pos_x, pos_y, velocity_x, velocity_y, velocity
-		pos_x = px
-		pos_y = py
-		velocity_x = vx
-		velocity_y = vy
-		velocity = v
-		self.Scene.particle.setPos(pos_x, pos_y)
-		self.update()
+		if not self.Restarting:
+			global pos_x, pos_y, velocity_x, velocity_y, velocity
+			pos_x = px
+			pos_y = py
+			velocity_x = vx
+			velocity_y = vy
+			velocity = v
+			self.Scene.particle.setPos(pos_x, pos_y)
+			self.update()
 
 	def restart(self):
+		self.Restarting = True
 		try:
 			self.simulation_thread.stop()
 			self.simulation_thread.quit()
 		except: pass
 		global charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y
-		time.sleep(0.2)
 		charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y = self.args
-		self.Tools.Particle_velocity.setValue(velocity)
-		self.Tools.Particle_x_pos.setValue(pos_x)
-		self.Tools.Particle_y_pos.setValue(pos_y)
-		self.Tools.Static_charge.setValue(charge_Q)
+		self.Tools.Particle_mass.show()
+		self.Tools.Particle_charge.show()
+		self.Tools.Particle_velocity.show()
+		self.Tools.Particle_x_pos.show()
+		self.Tools.Particle_y_pos.show()
+		self.Tools.Particle_theta.show()
+		self.Tools.Use_Point.show()
+		self.Tools.Use_Line.show()
+		self.Tools.Use_Plane.show()
+		self.Tools.Static_charge.show()
+		self.Tools.Start_Simulation.show()
 		self.Scene.particle.setPos(pos_x, -pos_y)
 		self.update()
 
@@ -184,7 +194,18 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Restart_Simulation.clicked.connect(self.Parent.restart)
 
 	def simulate(self):
-		self.Parent.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y]
+		self.updateSimulationValues()
+		self.Particle_mass.hide()
+		self.Particle_charge.hide()
+		self.Particle_velocity.hide()
+		self.Particle_x_pos.hide()
+		self.Particle_y_pos.hide()
+		self.Particle_theta.hide()
+		self.Use_Point.hide()
+		self.Use_Line.hide()
+		self.Use_Plane.hide()
+		self.Static_charge.hide()
+		self.Start_Simulation.hide()
 		self.Parent.simulate()
 
 	def updateSimulationValues(self):
@@ -288,45 +309,6 @@ class R_Image_Canvas_Viewport(QGraphicsView):
 
 		return super().drawBackground(painter, rect)
 
-	def wheelEvent(self, event: QWheelEvent):
-		zoomInFactor = 1.25
-		zoomOutFactor = 1 / zoomInFactor
-		oldPos = self.mapToScene(event.position().toPoint())
-		if event.angleDelta().y() > 0:
-			zoomFactor = zoomInFactor
-		else:
-			zoomFactor = zoomOutFactor
-
-		currentScale = self.transform().m11()
-		if zoomFactor * currentScale > 100.0:
-			zoomFactor = 100.0 / currentScale
-		elif zoomFactor * currentScale < 0.005:
-			zoomFactor = 0.005 / currentScale
-
-		self.scale(zoomFactor, zoomFactor)
-		newPos = self.mapToScene(event.position().toPoint())
-		delta = newPos - oldPos
-		self.translate(delta.x(), delta.y())
-
-	def mousePressEvent(self, event: QMouseEvent):
-		if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
-			self.Panning_View = True
-			self.Last_Pos_Pan = event.pos()
-
-	def mouseReleaseEvent(self, event: QMouseEvent):
-		if event.button() == Qt.MouseButton.MiddleButton or event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
-			self.Panning_View = False
-
-	def mouseMoveEvent(self, event: QMoveEvent):
-		if self.Panning_View:
-			delta = (event.pos() - self.Last_Pos_Pan)
-			self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
-			self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
-			self.Last_Pos_Pan = event.pos()
-
-		else: super().mouseMoveEvent(event)
-		self.scene().update()
-
 class Point_Charge(QGraphicsEllipseItem):
 	def __init__(self):
 		super().__init__(-4, -4, 8, 8)
@@ -397,7 +379,7 @@ class Particle(QGraphicsEllipseItem):
 			f"v = {v} m/s"
 		)
 
-		vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF(velocity** 0.3, 0))
+		vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF((velocity /1e5) ** 0.8, 0))
 		vector.setAngle(degrees(atan2(velocity_y, velocity_x)))
 		painter.setPen(QPen(Qt.GlobalColor.magenta, 2))
 		painter.drawLine(vector.p1(), vector.p2())
