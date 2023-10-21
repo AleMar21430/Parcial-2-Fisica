@@ -2,34 +2,32 @@ from qt import *
 from math import *
 import time
 
-global charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y, time_delta, simulation_step
-charge_Q = 1.60217  # e-19
-charge_q = 1.60217  # e-19
-mass     = 9.10938  # e-37
-velocity = 100000   # m/s
-angle = 0           # deg
-velocity_x = 100000 # m/s
-velocity_y = 0      # m/s
-pos_x = -500        # cm
-pos_y = 0           # cm
-simulation_step = 0
-
+global charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y
+charge_Q = 1.60217    # e-19
+charge_q = 1.60217    # e-19
+mass     = 9.10938    # e-37
+velocity = 299792458/3# m/s
+angle = 0             # deg
+velocity_x = velocity # m/s
+velocity_y = 0        # m/s
+pos_x = -500          # nm
+pos_y = 0             # nm
 
 class Simulation_Thread(QThread):
 	gui_update = Signal(float, float, float, float, float)
-	def __init__(self, Q, q, m, px, py, vx, vy, v, dt):
+	def __init__(self, Q, q, m, px, py, vx, vy, v):
 		super().__init__()
 		self.simulate = True
 		self.step = 0
 		self.charge_Q = Q
 		self.charge_q = q
 		self.mass = m
-		self.pos_x = px / 100 # cm to m
-		self.pos_y = py / 100 # cm to m
+		self.pos_x = px / 1e9 # nm to m
+		self.pos_y = py / 1e9 # nm to m
 		self.velocity_x = vx
 		self.velocity_y = vy
 		self.velocity = v
-		self.time_delta = dt
+		self.time_delta = 1e-18
 
 	def stop(self):
 		self.simulate = False
@@ -38,10 +36,10 @@ class Simulation_Thread(QThread):
 		delta = 15
 		while self.simulate:
 			start_time = time.time()
-			k            = eval(f"8.98755e{9-delta}")       # e 9
+			k            = eval(f"8.98755e{9-delta}")            # e 9
 			sim_charge_Q = eval(f"{self.charge_Q}e{-19+delta}")  # e-19
 			sim_charge_q = eval(f"{self.charge_q}e{-19+delta}")  # e-19
-			sim_mass     = eval(f"{mass}e{-37+delta}")      # e-37
+			sim_mass     = eval(f"{mass}e{-37+delta}")           # e-37
 
 			r = sqrt(self.pos_x ** 2 + self.pos_y ** 2)
 			F_electric = (k * sim_charge_q * sim_charge_Q) / r**2
@@ -60,12 +58,11 @@ class Simulation_Thread(QThread):
 
 			self.step += 1
 			if self.step % 30 >= 29:
-				self.gui_update.emit(self.pos_x * 100, self.pos_y * 100, self.velocity_x, self.velocity_y, self.velocity)
-
+				self.gui_update.emit(self.pos_x * 1e9, -self.pos_y * 1e9, self.velocity_x, -self.velocity_y, self.velocity)
 				end_time = time.time()
 				elapsed_time = end_time - start_time
-				if elapsed_time < 0.5:
-					time.sleep(0.5 - elapsed_time)
+				if elapsed_time < 0.025:
+					time.sleep(0.025 - elapsed_time)
 
 class R_Image_Canvas_Scene(QGraphicsScene):
 	def __init__(self):
@@ -76,13 +73,12 @@ class R_Image_Canvas_Scene(QGraphicsScene):
 		self.particle = Particle()
 		self.addItem(self.point_charge)
 		self.addItem(self.particle)
-		self.addEllipse(QRect(100,1,150,-1))
+		self.addRect(QRect(-1000,-400,1500,800))
 
 class R_Workspace_Image_Canvas(RW_Splitter):
 	def __init__(self, Log: RW_Text_Stream):
 		super().__init__(False)
 		self.Log = Log
-		self.Simulating = False
 
 		self.Scene = R_Image_Canvas_Scene()
 		self.Viewport = R_Image_Canvas_Viewport()
@@ -96,10 +92,10 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 		self.Tools.updateSimulationValues()
 		self.Viewport.update()
 
-		self.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y, time_delta, simulation_step]
+		self.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y]
 
 	def simulate(self):
-		self.simulation_thread = Simulation_Thread(charge_Q, charge_q, mass, pos_x, pos_y, velocity_x, velocity_y, velocity, time_delta)
+		self.simulation_thread = Simulation_Thread(charge_Q, charge_q, mass, pos_x, pos_y, velocity_x, velocity_y, velocity)
 		self.simulation_thread.gui_update.connect(self.thread_update)
 		self.simulation_thread.start()
 
@@ -114,11 +110,18 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 		self.update()
 
 	def restart(self):
-		global charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y, time_delta, simulation_step
-		charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y, time_delta, simulation_step = self.args
-		self.Tools.updateSimulationValues()
-		try: self.simulation_thread.stop()
+		try:
+			self.simulation_thread.stop()
+			self.simulation_thread.quit()
 		except: pass
+		global charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y
+		time.sleep(0.2)
+		charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y = self.args
+		self.Tools.Particle_velocity.setValue(velocity)
+		self.Tools.Particle_x_pos.setValue(pos_x)
+		self.Tools.Particle_y_pos.setValue(pos_y)
+		self.Tools.Static_charge.setValue(charge_Q)
+		self.Scene.particle.setPos(pos_x, -pos_y)
 		self.update()
 
 class R_Toolbar(RW_Linear_Contents):
@@ -126,18 +129,18 @@ class R_Toolbar(RW_Linear_Contents):
 		super().__init__(True)
 		self.Parent = parent
 
-		self.Particle_mass = RCW_Float_Input_Slider("Masa x 10⁻³⁷kg", 0, 1000, 100000).setValue(mass)
-		self.Particle_charge = RCW_Float_Input_Slider("Carga x 10⁻¹⁹C", 0, 100, 100000).setValue(charge_q)
+		self.Particle_mass = RCW_Float_Input_Slider("Masa x 10⁻³⁷kg", 0, 1000, 1e5).setValue(mass)
+		self.Particle_charge = RCW_Float_Input_Slider("Carga x 10⁻¹⁹C", 0, 100, 1e5).setValue(charge_q)
 		self.Particle_velocity = RCW_Float_Input_Slider("Velocidad m/s", 1, 299792458, 1).setValue(velocity)
-		self.Particle_x_pos = RCW_Float_Input_Slider("X cm", -10000, -25, 10000).setValue(pos_x)
-		self.Particle_y_pos = RCW_Float_Input_Slider("Y cm", -300, 300, 10000).setValue(pos_y)
+		self.Particle_x_pos = RCW_Float_Input_Slider("X nm", -1000, -25, 1e4).setValue(pos_x)
+		self.Particle_y_pos = RCW_Float_Input_Slider("Y nm", -300, 300, 1e4).setValue(pos_y)
 		self.Particle_theta = RCW_Float_Input_Slider("θ °", -45, 45, 10).setValue(angle)
 
 		self.Use_Point = RW_Button()
 		self.Use_Line = RW_Button()
 		self.Use_Plane = RW_Button()
 
-		self.Static_charge = RCW_Float_Input_Slider("Densidad / Carga", 0, 100, 100000).setValue(charge_Q)
+		self.Static_charge = RCW_Float_Input_Slider("Densidad / Carga", 0, 100, 1e5).setValue(charge_Q)
 
 		self.Start_Simulation = RW_Button()
 		self.Restart_Simulation = RW_Button()
@@ -181,57 +184,52 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Restart_Simulation.clicked.connect(self.Parent.restart)
 
 	def simulate(self):
-		self.Parent.Simulating = True
+		self.Parent.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y]
 		self.Parent.simulate()
 
 	def updateSimulationValues(self):
-		global charge_Q, charge_q, mass, velocity_x, velocity_y, pos_x, pos_y, time_delta, velocity, angle
-		if not self.Parent.Simulating:
-			angle = -self.Particle_theta.Input.value()/10
-			angle_rad = radians(angle)
+		global charge_Q, charge_q, mass, velocity_x, velocity_y, pos_x, pos_y, velocity, angle
+		angle = -self.Particle_theta.Input.value()/10
+		angle_rad = radians(angle)
 
-			charge_Q = self.Static_charge.Input.value() / 100000
-			charge_q = self.Particle_charge.Input.value() / 100000
-			mass = self.Particle_mass.Input.value() / 100000
-			velocity = self.Particle_velocity.Input.value()
-			velocity_x = cos(angle_rad) * velocity
-			velocity_y = sin(angle_rad) * velocity
-			time_delta = 0.005/velocity
-			pos_x = self.Particle_x_pos.Input.value() / 10000
-			pos_y = self.Particle_y_pos.Input.value() / 10000
-			self.Parent.Scene.particle.setPos(pos_x, -pos_y)
-			self.Parent.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y, time_delta, simulation_step]
-			self.Parent.Viewport.update()
+		charge_Q = self.Static_charge.Input.value() / 1e5
+		charge_q = self.Particle_charge.Input.value() / 1e5
+		mass = self.Particle_mass.Input.value() / 1e5
+		velocity = self.Particle_velocity.Input.value()
+		velocity_x = cos(angle_rad) * velocity
+		velocity_y = sin(angle_rad) * velocity
+		pos_x = self.Particle_x_pos.Input.value() / 1e4
+		pos_y = self.Particle_y_pos.Input.value() / 1e4
+		self.Parent.Scene.particle.setPos(pos_x, -pos_y)
+		self.Parent.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y]
+		self.Parent.Viewport.update()
 
 	def usePointCharge(self):
-		if not self.Parent.Simulating:
-			self.Parent.Scene.clear()
-			self.Parent.Scene.point_charge = Point_Charge()
-			self.Parent.Scene.particle = Particle()
-			self.Parent.Scene.addItem(self.Parent.Scene.particle)
-			self.Parent.Scene.addItem(self.Parent.Scene.point_charge)
-			self.Parent.Scene.addEllipse(QRect(100,1,150,-1))
-			self.updateSimulationValues()
+		self.Parent.Scene.clear()
+		self.Parent.Scene.point_charge = Point_Charge()
+		self.Parent.Scene.particle = Particle()
+		self.Parent.Scene.addItem(self.Parent.Scene.particle)
+		self.Parent.Scene.addItem(self.Parent.Scene.point_charge)
+		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.updateSimulationValues()
 		
 	def useLineCharge(self):
-		if not self.Parent.Simulating:
-			self.Parent.Scene.clear()
-			self.Parent.Scene.line_charge = Line_Charge()
-			self.Parent.Scene.particle = Particle()
-			self.Parent.Scene.addItem(self.Parent.Scene.particle)
-			self.Parent.Scene.addItem(self.Parent.Scene.line_charge)
-			self.Parent.Scene.addEllipse(QRect(100,1,150,-1))
-			self.updateSimulationValues()
+		self.Parent.Scene.clear()
+		self.Parent.Scene.line_charge = Line_Charge()
+		self.Parent.Scene.particle = Particle()
+		self.Parent.Scene.addItem(self.Parent.Scene.particle)
+		self.Parent.Scene.addItem(self.Parent.Scene.line_charge)
+		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.updateSimulationValues()
 		
 	def usePlaneCharge(self):
-		if not self.Parent.Simulating:
-			self.Parent.Scene.clear()
-			self.Parent.Scene.plane_charge = Plane_Charge()
-			self.Parent.Scene.particle = Particle()
-			self.Parent.Scene.addItem(self.Parent.Scene.particle)
-			self.Parent.Scene.addItem(self.Parent.Scene.plane_charge)
-			self.Parent.Scene.addEllipse(QRect(100,1,150,-1))
-			self.updateSimulationValues()
+		self.Parent.Scene.clear()
+		self.Parent.Scene.plane_charge = Plane_Charge()
+		self.Parent.Scene.particle = Particle()
+		self.Parent.Scene.addItem(self.Parent.Scene.particle)
+		self.Parent.Scene.addItem(self.Parent.Scene.plane_charge)
+		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.updateSimulationValues()
 
 
 class R_Image_Canvas_Viewport(QGraphicsView):
@@ -381,7 +379,7 @@ class Particle(QGraphicsEllipseItem):
 		theta = round(angle, 2)
 
 		painter.drawText(QPointF(self.mapFromScene(0,0).x() + 20, self.mapFromScene(0,0).y() + 40),
-			f"[ {x}m , {y}m ]"
+			f"[ {x}nm , {y}nm ]"
 		)
 		painter.drawText(QPointF(self.mapFromScene(0,0).x() + 20, self.mapFromScene(0,0).y() + 60),
 			f"θ = {theta}°"
@@ -399,7 +397,8 @@ class Particle(QGraphicsEllipseItem):
 			f"v = {v} m/s"
 		)
 
-		vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF(abs(velocity_x ** 0.25), abs(velocity_y ** 0.25)))
+		vector = QLineF(self.mapFromScene(self.pos()), self.mapFromScene(self.pos()) + QPointF(velocity** 0.3, 0))
+		vector.setAngle(degrees(atan2(velocity_y, velocity_x)))
 		painter.setPen(QPen(Qt.GlobalColor.magenta, 2))
 		painter.drawLine(vector.p1(), vector.p2())
 		painter.drawEllipse(self.mapFromScene(self.pos()) , dot_radius * 2, dot_radius * 2)
