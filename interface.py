@@ -1,6 +1,9 @@
 from qt import *
 from math import *
 import time
+import numpy
+
+PI = 3.141592654
 
 global charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y
 charge_Q = 1.60217    # e-19
@@ -15,7 +18,7 @@ pos_y = 0             # nm
 
 class Simulation_Thread(QThread):
 	gui_update = Signal(float, float, float, float, float)
-	def __init__(self, Q, q, m, px, py, vx, vy, v):
+	def __init__(self, Q, q, m, px, py, vx, vy, v, mode):
 		super().__init__()
 		self.simulate = True
 		self.step = 0
@@ -28,42 +31,99 @@ class Simulation_Thread(QThread):
 		self.velocity_y = vy
 		self.velocity = v
 		self.time_delta = 1e-18
+		self.mode = mode
 
 	def stop(self):
 		self.simulate = False
 
 	def run(self):
 		delta = 15
-		while self.simulate:
-			start_time = time.time()
-			k            = eval(f"8.98755e{9-delta}")            # e 9
-			sim_charge_Q = eval(f"{self.charge_Q}e{-19+delta}")  # e-19
-			sim_charge_q = eval(f"{self.charge_q}e{-19+delta}")  # e-19
-			sim_mass     = eval(f"{mass}e{-37+delta}")           # e-37
+		k            = eval(f"8.98755e{9-delta}")            # e 9
+		e0           = eval(f"8.85419e{-12+delta}")          # e-12
+		sim_charge_Q = eval(f"{self.charge_Q}e{-19+delta}")  # e-19
+		sim_charge_q = eval(f"{self.charge_q}e{-19+delta}")  # e-19
+		sim_densityq = eval(f"{self.charge_q}e{5}")      # e1
+		sim_mass     = eval(f"{mass}e{-37+delta}")           # e-37
+		if self.mode == 0:
+			while self.simulate:
+				start_time = time.time()
 
-			r = sqrt(self.pos_x ** 2 + self.pos_y ** 2)
-			F_electric = (k * sim_charge_q * sim_charge_Q) / r**2
-			Fx = F_electric * (self.pos_x  / r)
-			Fy = F_electric * (self.pos_y / r)
-			ax = Fx / sim_mass
-			ay = Fy / sim_mass
+				r = sqrt(self.pos_x ** 2 + self.pos_y ** 2)
+				F_electric = (k * sim_charge_q * sim_charge_Q) / r**2
+				Fx = F_electric * (self.pos_x / r)
+				Fy = F_electric * (self.pos_y / r)
+				ax = Fx / sim_mass
+				ay = Fy / sim_mass
 
-			self.velocity_x += ax * self.time_delta
-			self.velocity_y += ay * self.time_delta
+				self.velocity_x += ax * self.time_delta
+				self.velocity_y += ay * self.time_delta
 
-			self.pos_x += self.velocity_x * self.time_delta
-			self.pos_y += self.velocity_y * self.time_delta
+				self.pos_x += self.velocity_x * self.time_delta
+				self.pos_y += self.velocity_y * self.time_delta
 
-			self.velocity = sqrt(self.velocity_x ** 2 + self.velocity_y ** 2)
+				self.velocity = sqrt(self.velocity_x ** 2 + self.velocity_y ** 2)
 
-			self.step += 1
-			if self.step % 30 >= 29:
-				self.gui_update.emit(self.pos_x * 1e9, -self.pos_y * 1e9, self.velocity_x, -self.velocity_y, self.velocity)
-				end_time = time.time()
-				elapsed_time = end_time - start_time
-				if elapsed_time < 0.025:
-					time.sleep(0.025 - elapsed_time)
+				self.step += 1
+				if self.step % 30 >= 29:
+					self.gui_update.emit(self.pos_x * 1e9, -self.pos_y * 1e9, self.velocity_x, self.velocity_y, self.velocity)
+					end_time = time.time()
+					elapsed_time = end_time - start_time
+					if elapsed_time < 0.025:
+						time.sleep(0.025 - elapsed_time)
 
+		elif self.mode == 1:
+			while self.simulate:
+				start_time = time.time()
+
+				r = abs(self.pos_x)
+				F_electric = ((sim_densityq * sim_charge_Q) / (2 * PI * e0)) * log(2 * r)
+				Fx = F_electric
+				Fy = F_electric
+				ax = Fx / sim_mass
+				ay = Fy / sim_mass
+
+				self.velocity_x += ax * self.time_delta
+				self.velocity_y += ay * self.time_delta
+
+				self.pos_x += self.velocity_x * self.time_delta
+				self.pos_y += self.velocity_y * self.time_delta
+
+				self.velocity = sqrt(self.velocity_x ** 2 + self.velocity_y ** 2)
+
+				self.step += 1
+				if self.step % 30 >= 29:
+					self.gui_update.emit(self.pos_x * 1e9, -self.pos_y * 1e9, self.velocity_x, self.velocity_y, self.velocity)
+					end_time = time.time()
+					elapsed_time = end_time - start_time
+					if elapsed_time < 0.025:
+						time.sleep(0.025 - elapsed_time)
+
+		else:
+			while self.simulate:
+				start_time = time.time()
+
+				r = abs(self.pos_x)
+				F_electric = (k * sim_charge_q * sim_charge_Q * 2 * r)
+				Fx = F_electric * (self.pos_x / r)
+				Fy = F_electric * (self.pos_y / r)
+				ax = Fx / sim_mass
+				ay = Fy / sim_mass
+
+				self.velocity_x += ax * self.time_delta
+				self.velocity_y += ay * self.time_delta
+
+				self.pos_x += self.velocity_x * self.time_delta
+				self.pos_y += self.velocity_y * self.time_delta
+
+				self.velocity = sqrt(self.velocity_x ** 2 + self.velocity_y ** 2)
+
+				self.step += 1
+				if self.step % 30 >= 29:
+					self.gui_update.emit(self.pos_x * 1e9, -self.pos_y * 1e9, self.velocity_x, self.velocity_y, self.velocity)
+					end_time = time.time()
+					elapsed_time = end_time - start_time
+					if elapsed_time < 0.025:
+						time.sleep(0.025 - elapsed_time)
 class R_Image_Canvas_Scene(QGraphicsScene):
 	def __init__(self):
 		super().__init__()
@@ -79,6 +139,8 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 	def __init__(self, Log: RW_Text_Stream):
 		super().__init__(False)
 		self.Log = Log
+		self.Restarting = True
+		self.Mode = 0
 
 		self.Scene = R_Image_Canvas_Scene()
 		self.Viewport = R_Image_Canvas_Viewport()
@@ -91,13 +153,12 @@ class R_Workspace_Image_Canvas(RW_Splitter):
 
 		self.Tools.updateSimulationValues()
 		self.Viewport.update()
-		self.Restarting = True
 
 		self.args = [charge_Q, charge_q, mass, velocity, angle, velocity_x, velocity_y, pos_x, pos_y]
 
 	def simulate(self):
 		self.Restarting = False
-		self.simulation_thread = Simulation_Thread(charge_Q, charge_q, mass, pos_x, pos_y, velocity_x, velocity_y, velocity)
+		self.simulation_thread = Simulation_Thread(charge_Q, charge_q, mass, pos_x, pos_y, velocity_x, velocity_y, velocity, self.Mode)
 		self.simulation_thread.gui_update.connect(self.thread_update)
 		self.simulation_thread.start()
 
@@ -150,7 +211,7 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Use_Line = RW_Button()
 		self.Use_Plane = RW_Button()
 
-		self.Static_charge = RCW_Float_Input_Slider("Densidad / Carga", 0, 100, 1e5).setValue(charge_Q)
+		self.Static_charge = RCW_Float_Input_Slider("Carga x 10⁻¹⁹C", 0, 100, 1e5).setValue(charge_Q)
 
 		self.Start_Simulation = RW_Button()
 		self.Restart_Simulation = RW_Button()
@@ -232,6 +293,8 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Parent.Scene.addItem(self.Parent.Scene.particle)
 		self.Parent.Scene.addItem(self.Parent.Scene.point_charge)
 		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.Parent.Mode = 0
+		self.Static_charge.Label.setText("Carga x 10⁻¹⁹C")
 		self.updateSimulationValues()
 		
 	def useLineCharge(self):
@@ -241,6 +304,8 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Parent.Scene.addItem(self.Parent.Scene.particle)
 		self.Parent.Scene.addItem(self.Parent.Scene.line_charge)
 		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.Parent.Mode = 1
+		self.Static_charge.Label.setText("Densidad C/m")
 		self.updateSimulationValues()
 		
 	def usePlaneCharge(self):
@@ -250,6 +315,8 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Parent.Scene.addItem(self.Parent.Scene.particle)
 		self.Parent.Scene.addItem(self.Parent.Scene.plane_charge)
 		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.Parent.Mode = 2
+		self.Static_charge.Label.setText("Densidad C/m²")
 		self.updateSimulationValues()
 
 
@@ -356,8 +423,8 @@ class Particle(QGraphicsEllipseItem):
 		y = '{:,}'.format(-self.pos().y()).replace(',','\'')
 		m = '{:,}'.format(mass).replace(',','\'')
 		v = '{:,}'.format(round(velocity)).replace(',','\'')
-		vx = '{:,}'.format(round(velocity_x,2)).replace(',','\'')
-		vy = '{:,}'.format(round(velocity_y,2)).replace(',','\'')
+		vx = '{:,}'.format(round(velocity_x)).replace(',','\'')
+		vy = '{:,}'.format(round(velocity_y)).replace(',','\'')
 		theta = round(angle, 2)
 
 		painter.drawText(QPointF(self.mapFromScene(0,0).x() + 20, self.mapFromScene(0,0).y() + 40),
