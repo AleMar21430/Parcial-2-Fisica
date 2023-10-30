@@ -76,14 +76,12 @@ class Simulation_Thread(QThread):
 				start_time = time.time()
 
 				r = abs(self.pos_x)
-				F_electric = ((sim_densityq * sim_charge_Q) / (2 * PI * e0)) * log(2 * r)
-				Fx = F_electric
-				Fy = F_electric
+				F_electric = (k * sim_charge_q * sim_charge_Q) / r**2
+				Fx = F_electric * (self.pos_x / r)
+
 				ax = Fx / sim_mass
-				ay = Fy / sim_mass
 
 				self.velocity_x += ax * self.time_delta
-				self.velocity_y += ay * self.time_delta
 
 				self.pos_x += self.velocity_x * self.time_delta
 				self.pos_y += self.velocity_y * self.time_delta
@@ -103,14 +101,12 @@ class Simulation_Thread(QThread):
 				start_time = time.time()
 
 				r = abs(self.pos_x)
-				F_electric = (k * sim_charge_q * sim_charge_Q * 2 * r)
+				F_electric = (k * sim_charge_q * sim_charge_Q) / r**2
 				Fx = F_electric * (self.pos_x / r)
-				Fy = F_electric * (self.pos_y / r)
+
 				ax = Fx / sim_mass
-				ay = Fy / sim_mass
 
 				self.velocity_x += ax * self.time_delta
-				self.velocity_y += ay * self.time_delta
 
 				self.pos_x += self.velocity_x * self.time_delta
 				self.pos_y += self.velocity_y * self.time_delta
@@ -124,6 +120,7 @@ class Simulation_Thread(QThread):
 					elapsed_time = end_time - start_time
 					if elapsed_time < 0.025:
 						time.sleep(0.025 - elapsed_time)
+
 class R_Image_Canvas_Scene(QGraphicsScene):
 	def __init__(self):
 		super().__init__()
@@ -133,7 +130,7 @@ class R_Image_Canvas_Scene(QGraphicsScene):
 		self.particle = Particle()
 		self.addItem(self.point_charge)
 		self.addItem(self.particle)
-		self.addRect(QRect(-1000,-400,1500,800))
+		self.addRect(QRect(-2000, -400, 2800, 800))
 
 class R_Workspace_Image_Canvas(RW_Splitter):
 	def __init__(self, Log: RW_Text_Stream):
@@ -292,7 +289,7 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Parent.Scene.particle = Particle()
 		self.Parent.Scene.addItem(self.Parent.Scene.particle)
 		self.Parent.Scene.addItem(self.Parent.Scene.point_charge)
-		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.Parent.Scene.addRect(QRect(-2000, -400, 2800, 800))
 		self.Parent.Mode = 0
 		self.Static_charge.Label.setText("Carga x 10⁻¹⁹C")
 		self.updateSimulationValues()
@@ -303,7 +300,7 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Parent.Scene.particle = Particle()
 		self.Parent.Scene.addItem(self.Parent.Scene.particle)
 		self.Parent.Scene.addItem(self.Parent.Scene.line_charge)
-		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.Parent.Scene.addRect(QRect(-2000, -400, 2800, 800))
 		self.Parent.Mode = 1
 		self.Static_charge.Label.setText("Densidad C/m")
 		self.updateSimulationValues()
@@ -314,7 +311,7 @@ class R_Toolbar(RW_Linear_Contents):
 		self.Parent.Scene.particle = Particle()
 		self.Parent.Scene.addItem(self.Parent.Scene.particle)
 		self.Parent.Scene.addItem(self.Parent.Scene.plane_charge)
-		self.Parent.Scene.addRect(QRect(-1000,-400,1500,800))
+		self.Parent.Scene.addRect(QRect(-2000, -400, 2800, 800))
 		self.Parent.Mode = 2
 		self.Static_charge.Label.setText("Densidad C/m²")
 		self.updateSimulationValues()
